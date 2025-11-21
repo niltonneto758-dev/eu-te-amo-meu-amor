@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<!-- saved from url=(0030)http://127.0.0.1:5500/jjd.html -->
+<html lang="pt-br"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EU TE AMO MEU AMOR</title>
+    <style>
+        /* --- ESTILOS GERAIS --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; /* Impede selecionar texto */ }
+        body {
+            background-color: #111;
+            color: white;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden; /* Impede rolagem */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- CENAS --- */
+        .scene {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #111;
+        }
+        .active { display: flex; }
+
+        /* --- TELA INICIAL --- */
+        #scene-start { z-index: 20; text-align: center; padding: 20px; }
+        .start-btn {
+            padding: 20px 40px;
+            font-size: 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            margin-top: 20px;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        /* --- JOGO (CANVAS + CONTROLES) --- */
+        #game-area {
+            position: relative;
+            width: 95%; /* Ocupa quase toda a largura do celular */
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            border: 2px solid #444;
+            background: #2c3e50;
+            border-radius: 10px;
+            width: 100%; /* Responsivo */
+            height: auto;
+            touch-action: none; /* Impede zoom ou rolagem ao tocar no jogo */
+        }
+
+        /* Placar */
+        #score-board {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            font-size: 40px;
+            font-weight: bold;
+            pointer-events: none;
+            opacity: 0.6;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .p-score { color: #3498db; }
+        .m-score { color: #e74c3c; }
+
+        /* --- CONTROLES (SETAS) --- */
+        #controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .arrow-btn {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+            cursor: pointer;
+            /* Evita delay no toque no celular */
+            touch-action: manipulation; 
+        }
+        .arrow-btn:active {
+            background-color: rgba(255, 255, 255, 0.4);
+            transform: scale(0.95);
+        }
+
+        /* --- BALÕES DE PENSAMENTO --- */
+        #thought-bubble {
+            position: absolute;
+            background-color: white;
+            color: #333;
+            padding: 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            z-index: 10;
+            pointer-events: none;
+            max-width: 150px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        /* Setinha do balão */
+        #thought-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: white transparent transparent transparent;
+        }
+
+        /* --- CASA --- */
+        #scene-home { background: radial-gradient(circle at center, #2c3e50 0%, #000 100%); }
+        .room-obj { font-size: 80px; margin: 20px; position: relative; animation: floatObj 3s ease-in-out infinite; }
+        @keyframes floatObj { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
+        #phone-icon { animation: vibrate 0.5s infinite paused; }
+        #notification-dot {
+            position: absolute; top: 0; right: 0; width: 20px; height: 20px; 
+            background: red; border-radius: 50%; display: none;
+            box-shadow: 0 0 10px red;
+        }
+
+        /* --- VÍDEO --- */
+        #video-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; display: none;
+            justify-content: center; align-items: center; flex-direction: column;
+            z-index: 100;
+        }
+        video { width: 100%; max-width: 100%; height: auto; max-height: 80vh; }
+        #play-overlay {
+            position: absolute; font-size: 80px; color: white; opacity: 0.8;
+        }
+
+        /* --- FINAL --- */
+        #scene-end { padding: 20px; text-align: center; }
+        .final-msg {
+            border: 2px solid white; padding: 20px; border-radius: 10px;
+            font-style: italic; margin-bottom: 30px;
+        }
+
+        /* Player de música pequeno no topo */
+        #mini-player {
+            position: absolute; top: 10px; right: 10px; opacity: 0.5; z-index: 200;
+        }
+        audio { height: 20px; width: 100px; }
+
+    </style>
+</head>
+<body>
+
+    <div id="mini-player">
+        <audio id="bg-music" controls="" loop="">
+            <source src="Charlie Brown Jr. - Só Existe o Agora (Lyric Video).mp3" type="audio/mpeg">
+        </audio>
+    </div>
+
+    <div id="scene-start" class="scene active">
+        <h1 style="color: #e74c3c; margin-bottom: 10px;">EU TE AMO MARIA</h1>
+      
+        <button class="start-btn" onclick="startGame()">JOGAR</button>
+    </div>
+
+    <div id="scene-pong" class="scene">
+        <div id="game-area">
+            <div id="score-board">
+                <span class="p-score" id="userScore">0</span>
+                <span class="m-score" id="comScore">0</span>
+            </div>
+            
+            <canvas id="pong" width="350" height="500"></canvas>
+            
+            <div id="thought-bubble">Pensando...</div>
+
+            <div id="controls">
+                <div class="arrow-btn" onmousedown="moveUp()" onmouseup="stopMove()" ontouchstart="moveUp()" ontouchend="stopMove()">▲</div>
+                
+                <div class="arrow-btn" onmousedown="moveDown()" onmouseup="stopMove()" ontouchstart="moveDown()" ontouchend="stopMove()">▼</div>
+            </div>
+        
+        </div>
+    </div>
+
+    <div id="scene-home" class="scene">
+        <h2 style="margin-bottom: 40px;">MEU QUARTO</h2>
+        <div id="phone-icon" class="room-obj" onclick="openPhone()">📱<div id="notification-dot"></div></div>
+        <div id="bed-icon" class="room-obj" style="display: none;" onclick="goToSleep()">🛏️</div>
+        <p id="status-text" style="color: #aaa; font-size: 14px;">Checou notificação...</p>
+    </div>
+
+    <div id="video-modal">
+        <div id="play-overlay" onclick="playVideoFile()">▶</div>
+        <video id="myVideo" playsinline="" onclick="playVideoFile()">
+            <source src="Vídeo do WhatsApp de 2025-11-21 à(s) 17.43.10_92f13289.mp4" type="video/mp4">
+        </video>
+        <button onclick="closeVideo()" style="margin-top: 20px; padding: 15px; border: none; background: #333; color: white; border-radius: 5px;">FECHAR E DEITAR</button>
+    </div>
+
+    <div id="scene-end" class="scene">
+        <div class="final-msg">
+            "Perdi o jogo...<br>Mas ganhei o amor da minha vida" ❤️
+        </div>
+        <h1 style="color: #e74c3c;">TE AMO MARIA</h1>
+    </div>
+
+    <script>
+        // --- ÁUDIO AUTOMÁTICO ---
+        function startGame() {
+            const audio = document.getElementById('bg-music');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log("Interação necessária"));
+            
+            document.getElementById('scene-start').classList.remove('active');
+            document.getElementById('scene-pong').classList.add('active');
+            
+            gameLoop();
+            startThinking();
+        }
+
+        // --- LÓGICA DO JOGO MOBILE ---
+        const canvas = document.getElementById("pong");
+        const ctx = canvas.getContext("2d");
+
+        // Ajustes para tela menor (Mobile)
+        const user = { x: 10, y: 200, width: 10, height: 80, color: "#3498db", score: 0, dy: 0 };
+        const com = { x: 330, y: 200, width: 10, height: 80, color: "#e74c3c", score: 0 };
+        const ball = { x: 175, y: 250, r: 8, speed: 6, vX: 4, vY: 4, color: "#ff69b4" };
+
+        let gameRunning = true;
+
+        // Funções de Movimento (Touch)
+        function moveUp() { user.dy = -6; }
+        function moveDown() { user.dy = 6; }
+        function stopMove() { user.dy = 0; }
+
+        function drawRect(x,y,w,h,c) { ctx.fillStyle = c; ctx.fillRect(x,y,w,h); }
+        function drawHeart(x, y, size, color) {
+            ctx.fillStyle = color; ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.bezierCurveTo(x - size / 2, y - size / 2, x - size, y + size / 3, x, y + size);
+            ctx.bezierCurveTo(x + size, y + size / 3, x + size / 2, y - size / 2, x, y);
+            ctx.fill();
+        }
+
+        function update() {
+            if(!gameRunning) return;
+
+            // Move Jogador
+            user.y += user.dy;
+            // Limites da tela
+            if(user.y < 0) user.y = 0;
+            if(user.y + user.height > canvas.height) user.y = canvas.height - user.height;
+
+            // Move Bola
+            ball.x += ball.vX;
+            ball.y += ball.vY;
+
+            // Colisão Paredes (Cima/Baixo)
+            if(ball.y + ball.r > canvas.height || ball.y - ball.r < 0) ball.vY = -ball.vY;
+
+            // IA MARIA (Imbatível)
+            com.y += (ball.y - (com.y + com.height/2)) * 0.15; // Velocidade ajustada para mobile
+
+            // Colisão Raquetes
+            let player = (ball.x < canvas.width/2) ? user : com;
+            if (ball.x - ball.r < player.x + player.width && ball.x + ball.r > player.x &&
+                ball.y + ball.r > player.y && ball.y - ball.r < player.y + player.height) {
+                
+                let collidePoint = (ball.y - (player.y + player.height/2)) / (player.height/2);
+                let angleRad = (Math.PI/4) * collidePoint;
+                let direction = (ball.x < canvas.width/2) ? 1 : -1;
+                
+                ball.vX = direction * ball.speed * Math.cos(angleRad);
+                ball.vY = ball.speed * Math.sin(angleRad);
+                ball.speed += 0.5;
+            }
+
+            // Pontuação
+            if(ball.x < 0) { // Ponto dela
+                com.score++;
+                user.height -= 10; // Raquete diminui
+                resetBall();
+            } else if(ball.x > canvas.width) {
+                user.score++;
+                resetBall();
+            }
+            updateScore();
+        }
+
+        function resetBall() {
+            ball.x = canvas.width/2; ball.y = canvas.height/2;
+            ball.speed = 6; ball.vX = -ball.vX;
+        }
+
+        function updateScore() {
+            document.getElementById("userScore").innerText = user.score;
+            document.getElementById("comScore").innerText = com.score;
+
+            if(com.score >= 5) {
+                gameRunning = false;
+                stopThinking();
+                setTimeout(goHome, 1000);
+            }
+        }
+
+        function draw() {
+            drawRect(0,0, canvas.width, canvas.height, "#2c3e50");
+            // Linha meio
+            for(let i=0; i<canvas.height; i+=20) drawRect(canvas.width/2-1, i, 2, 10, "#fff");
+            drawRect(user.x, user.y, user.width, user.height, user.color);
+            drawRect(com.x, com.y, com.width, com.height, com.color);
+            drawHeart(ball.x, ball.y - 5, 12, ball.color);
+        }
+
+        function gameLoop() {
+            update(); draw();
+            if(gameRunning) requestAnimationFrame(gameLoop);
+        }
+
+        // --- PENSAMENTOS ---
+        const thoughts = ["Que linda...", "Não consigo focar", "Meu Deus...", "😍", "Ela joga muito!", "O sorriso dela...", "Meu Desu, que deusa"];
+        let thoughtInterval;
+
+        function startThinking() {
+            const bubble = document.getElementById("thought-bubble");
+            thoughtInterval = setInterval(() => {
+                if(!gameRunning) return;
+                
+                // Pega um pensamento aleatório
+                bubble.innerText = thoughts[Math.floor(Math.random() * thoughts.length)];
+                
+                // Posiciona perto da raquete do jogador (fixo no mobile para não bugar)
+                bubble.style.left = "60px"; 
+                bubble.style.top = (user.y + 50) + "px"; 
+                
+                bubble.style.opacity = 1;
+                setTimeout(() => { bubble.style.opacity = 0; }, 2000);
+
+            }, 3500);
+        }
+
+        function stopThinking() { clearInterval(thoughtInterval); }
+
+
+        // --- NAVEGAÇÃO ---
+        function goHome() {
+            document.getElementById('scene-pong').classList.remove('active');
+            document.getElementById('scene-home').classList.add('active');
+            
+            setTimeout(() => {
+                document.getElementById('phone-icon').style.animationPlayState = 'running';
+                document.getElementById('notification-dot').style.display = 'block';
+            }, 1000);
+        }
+
+        function openPhone() {
+            document.getElementById('video-modal').style.display = 'flex';
+            document.getElementById('phone-icon').style.animation = 'none';
+            document.getElementById('notification-dot').style.display = 'none';
+        }
+
+        function playVideoFile() {
+            document.getElementById('play-overlay').style.display = 'none';
+            document.getElementById('bg-music').pause();
+            document.getElementById('myVideo').play();
+        }
+
+        function closeVideo() {
+            document.getElementById('video-modal').style.display = 'none';
+            document.getElementById('myVideo').pause();
+            document.getElementById('bg-music').play();
+
+            document.getElementById('bed-icon').style.display = 'block';
+            document.getElementById('status-text').innerText = "Agora descansar...";
+        }
+
+        function goToSleep() {
+            document.getElementById('scene-home').classList.remove('active');
+            document.getElementById('scene-end').classList.add('active');
+        }
+
+    </script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>
